@@ -18,14 +18,16 @@
     <main id="app" class="h-screen w-full flex flex-col p-5 pb-32 overflow-y-auto">
         
         <header class="flex justify-between items-center mb-6 pt-6">
-            <div>
-                <h2 class="text-[10px] uppercase tracking-[0.3em] text-gray-500 font-bold">Manager Dashboard</h2>
-                <h1 class="text-2xl font-extrabold tracking-tight text-white">Buchu Kassa</h1>
-            </div>
-            <div class="w-12 h-12 rounded-2xl glass flex items-center justify-center border-premium-neonBlue/20 border">
-                <i data-lucide="user-check" class="w-6 h-6 text-premium-neonBlue"></i>
-            </div>
-        </header>
+    <div>
+        <h2 class="text-[10px] uppercase tracking-[0.3em] text-gray-500 font-bold">Manager Dashboard</h2>
+        <h1 class="text-2xl font-extrabold tracking-tight text-white">Buchu Kassa</h1>
+    </div>
+    <div class="relative w-14 h-14 rounded-2xl glass flex items-center justify-center border-white/10 border overflow-hidden group">
+        <img src="public/logo.png" alt="Payease Pro" class="w-20 h-16 z-10 group-hover:scale-110 transition-transform duration-500">
+        
+        <div class="absolute inset-0 bg-gradient-to-tr from-premium-neonBlue/20 to-premium-neonPurple/20 blur-xl opacity-50"></div>
+    </div>
+</header>
 
     <section id="dashboard" class="tab-content active space-y-8">
         <div id="sync-indicator" class="absolute top-4 right-6 flex items-center gap-2 opacity-0 transition-opacity">
