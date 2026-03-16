@@ -1,0 +1,148 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+.glow-cyan {
+    box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
+    text-shadow: 0 0 10px rgba(34, 211, 238, 0.6);
+}
+
+.glass-ui {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+
+/* Premium OLED Depth & Glows */
+.worker-card {
+    background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.worker-card:active {
+    transform: scale(0.97);
+    border-color: rgba(0, 210, 255, 0.5);
+}
+
+/* The "Pulse" for the Pay button */
+.btn-pay {
+    background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+    box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
+    color: #000;
+}
+
+/* Animations */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-worker-entry {
+    animation: slideUp 0.4s ease-out forwards;
+}
+
+
+/* Add this to your style block */
+#sync-indicator {
+    z-index: 50;
+    pointer-events: none; /* Won't block clicks */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ensure the main container feels like an app, not a website */
+#app {
+    scrollbar-width: none; /* Hide scrollbar Firefox */
+    -ms-overflow-style: none; /* Hide scrollbar IE/Edge */
+}
+#app::-webkit-scrollbar {
+    display: none; /* Hide scrollbar Chrome/Safari */
+}
+
+.toast-msg {
+    opacity: 0;
+    /* Starts slightly higher than final position */
+    transform: translate(-50%, -20px); 
+    
+    /* Heavy Dark Glass - prevents background bleed */
+    background: rgba(12, 12, 12, 0.9) !important; 
+    backdrop-filter: blur(40px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+    
+    /* Stronger shadow for top-position depth */
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+
+.glass-card {
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s ease;
+}
+
+.glass-card:active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+
+.toast-msg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+
+@keyframes slide-up-smooth {
+    from { transform: translate(-50%, 20px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+
+:root {
+            --neon-blue: #00d2ff;
+            --neon-purple: #a855f7;
+            --neon-green: #4ade80;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            background-color: #050505;
+        }
+
+        .glass {
+    /* 1. Higher opacity (12%) so background colors don't scream through */
+    background: rgba(15, 15, 15, 0.75); 
+    
+    /* 2. Intense blur + Saturation boost */
+    /* Saturate(180%) makes the blur look "expensive" and deep */
+    backdrop-filter: blur(25px) saturate(180%);
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
+    
+    /* 3. Subtle inner glow instead of a flat border */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    /* 4. Optional: add a subtle shadow to lift it off the background */
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+}
+
+        .nav-active { 
+            color: var(--neon-blue); 
+            filter: drop-shadow(0 0 12px rgba(0, 210, 255, 0.5)); 
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: smoothEntry 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        @keyframes smoothEntry {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
