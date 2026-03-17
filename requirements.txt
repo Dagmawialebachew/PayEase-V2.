@@ -58,6 +58,7 @@ python-dotenv==1.0.1
 python-multipart==0.0.22
 pytz==2025.2
 PyYAML==6.0.3
+qrcode==8.2
 reportlab==4.4.7
 rich==14.3.2
 setuptools==82.0.0
