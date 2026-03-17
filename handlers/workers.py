@@ -16,7 +16,7 @@ async def cmd_start(message: Message):
     markup = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
-                text="🚀 Open Wage Manager", 
+                text="🚀 Open Payease", 
                 web_app=WebAppInfo(url=settings.MINI_APP_URL)
             )
         ]
