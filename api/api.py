@@ -12,19 +12,27 @@ import uuid
 from app_context import db  # shared Database instance from your app_context
 
 # --- Helpers ---
+
 def _record_to_dict(rec):
+    from datetime import datetime, date, timezone  # Add these at the top
     if rec is None:
         return {}
+    
     d = dict(rec)
-    for k, v in list(d.items()):
+    for k, v in d.items():
+        # Handle Currency/Decimals
         if isinstance(v, Decimal):
             d[k] = float(v)
-        elif isinstance(v, (datetime, datetime.date)):
-            # Ensure UTC ISO format
-            if isinstance(v, datetime.datetime) and v.tzinfo is None:
-                d[k] = v.replace(tzinfo=datetime.timezone.utc).isoformat()
+        
+        # Handle Dates and Timestamps
+        elif isinstance(v, datetime):  # This checks for datetime objects
+            if v.tzinfo is None:
+                d[k] = v.replace(tzinfo=timezone.utc).isoformat()
             else:
                 d[k] = v.isoformat()
+        elif isinstance(v, date):  # This checks for simple date objects
+            d[k] = v.isoformat()
+            
     return d
 
 # Cursor helpers for transactions paging
