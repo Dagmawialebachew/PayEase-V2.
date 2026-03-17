@@ -19,7 +19,7 @@ def _record_to_dict(rec):
     for k, v in list(d.items()):
         if isinstance(v, Decimal):
             d[k] = float(v)
-        elif isinstance(v, (datetime.datetime, datetime.date)):
+        elif isinstance(v, (datetime, datetime.date)):
             # Ensure UTC ISO format
             if isinstance(v, datetime.datetime) and v.tzinfo is None:
                 d[k] = v.replace(tzinfo=datetime.timezone.utc).isoformat()
