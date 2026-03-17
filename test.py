@@ -6,7 +6,7 @@ from decimal import Decimal
 from datetime import datetime, date, timedelta
 
 # Database Connection Info - Update these
-DSN = "postgresql://payease:payeaseforever@localhost:5432/payease_db"
+DSN = "postgresql://neondb_owner:npg_bRs7ildSZB6r@ep-proud-water-ad2c4gmz-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 
 async def populate_test_data():
