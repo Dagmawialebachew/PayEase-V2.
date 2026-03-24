@@ -96,6 +96,9 @@ SELECT
     'payout' as type, id, worker_id, net_amount, loan_deduction, created_at, club
 FROM payouts
 ORDER BY created_at DESC;
+
+ALTER TABLE workers ADD COLUMN IF NOT EXISTS registered_at DATE DEFAULT CURRENT_DATE;
+
 """
 
 class Database:
@@ -118,12 +121,49 @@ class Database:
             await conn.execute(SCHEMA_SQL)
 
     # --- WORKER METHODS ---
-    async def add_worker(self, name: str, phone: str, club: str, rate: float):
-        query = """
-            INSERT INTO workers (full_name, phone, club, daily_rate)
-            VALUES ($1, $2, $3, $4) RETURNING id
-        """
-        return await self._pool.fetchval(query, name, phone, club, rate)
+    from datetime import datetime # Make sure this is at the top of db.py
+    
+    async def delete_worker(self, worker_id: int):
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                # 1. Clean up associated data first (Attendance, Payouts, Loans)
+                # This ensures no foreign key violations
+                await conn.execute("DELETE FROM attendance WHERE worker_id = $1", worker_id)
+                await conn.execute("DELETE FROM payouts WHERE worker_id = $1", worker_id)
+                await conn.execute("DELETE FROM loans WHERE worker_id = $1", worker_id)
+                
+                # 2. Finally, delete the worker
+                result = await conn.execute("DELETE FROM workers WHERE id = $1", worker_id)
+                
+                # Check if a row was actually deleted (returns "DELETE 1")
+                return result == "DELETE 1"
+
+    async def add_worker(self, name, phone, club, rate, registered_at):
+        # 1. Convert the string '2026-03-04' into a real Python date object
+        from datetime import datetime # Make sure this is at the top of db.py
+        if isinstance(registered_at, str):
+            reg_date = datetime.strptime(registered_at, '%Y-%m-%d').date()
+        else:
+            reg_date = registered_at
+
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                # 2. Pass the parsed reg_date to the query
+                worker_id = await conn.fetchval("""
+                    INSERT INTO workers (full_name, phone, club, daily_rate, registered_at)
+                    VALUES ($1, $2, $3, $4, $5) 
+                    RETURNING id
+                """, name, phone, club, rate, reg_date)
+
+                # 3. Backfill Attendance using the same date object
+                await conn.execute("""
+                    INSERT INTO attendance (worker_id, rate_at_time, work_date)
+                    SELECT $1, $2, d::date
+                    FROM generate_series($3::date, CURRENT_DATE, '1 day'::interval) d
+                    ON CONFLICT (worker_id, work_date) DO NOTHING
+                """, worker_id, rate, reg_date)
+
+                return worker_id
 
     async def get_active_workers(self, club: str = None):
         if club:

@@ -106,7 +106,7 @@ async def list_workers(request: web.Request):
             FROM workers w
         )
         SELECT 
-            w.id, w.full_name, w.phone, w.club, w.daily_rate, w.is_active, w.created_at,
+            w.id, w.full_name, w.phone, w.club, w.daily_rate, w.is_active, w.created_at, w.registered_at, 
             s.active_loan,
             s.last_payout_at,
             (s.gross_owed - s.already_paid) as unpaid_value
@@ -151,11 +151,23 @@ async def list_workers(request: web.Request):
                     rec["last_payout_at"] = rec["last_payout_at"].isoformat()
                 else:
                     rec["last_payout_at"] = None
-                
+
+                # 2. Handle Registration Date (THE FIX)
+                if rec.get("registered_at"):
+                    # If it exists (manually set), use it
+                    rec["registered_at"] = rec["registered_at"].isoformat()
+                elif rec.get("created_at"):
+                    # Fallback to the DB record timestamp
+                    rec["registered_at"] = rec["created_at"].isoformat()
+                else:
+                    rec["registered_at"] = None
+
+                # 3. Keep created_at for other uses
                 if rec.get("created_at"):
                     rec["created_at"] = rec["created_at"].isoformat()
 
                 workers.append(rec)
+                print('here are workers', workers)
 
         return web.json_response(workers)
 
@@ -711,7 +723,7 @@ async def list_workers(request: web.Request):
             FROM workers w
         )
         SELECT 
-            w.id, w.full_name, w.phone, w.club, w.daily_rate, w.is_active, w.created_at,
+            w.id, w.full_name, w.phone, w.club, w.daily_rate, w.is_active,w.registered_at, w.created_at,
             COALESCE(s.active_loan, 0) as active_loan,
             s.last_payout_at,
             COALESCE((s.gross_owed - s.already_paid), 0) as unpaid_value
@@ -751,8 +763,21 @@ async def list_workers(request: web.Request):
                 rec["unpaid_value"] = float(rec["unpaid_value"] or 0)
                 
                 # ISO Format for dates
-                rec["last_payout_at"] = rec["last_payout_at"].isoformat() if rec.get("last_payout_at") else None
-                rec["created_at"] = rec["created_at"].isoformat() if rec.get("created_at") else None
+                if rec.get("registered_at"):
+                    # This converts date(2026, 3, 24) to "2026-03-24"
+                    rec["registered_at"] = str(rec["registered_at"]) 
+                elif rec.get("created_at"):
+                    # Fallback to created_at if registered_at is empty
+                    rec["registered_at"] = str(rec["created_at"])
+                else:
+                    rec["registered_at"] = None
+
+                # 3. Handle other timestamps
+                if rec.get("last_payout_at"):
+                    rec["last_payout_at"] = str(rec["last_payout_at"])
+                
+                if rec.get("created_at"):
+                    rec["created_at"] = str(rec["created_at"])
 
                 workers.append(rec)
 
@@ -763,12 +788,11 @@ async def list_workers(request: web.Request):
         logging.exception("LIST_WORKERS_ERROR: %s", e)
         # Return empty list so the frontend doesn't crash, but you'll know it's broken
         return web.json_response([])
-
 async def add_worker(request: web.Request):
     """
-    Adds a new worker. Expects JSON:
-      { "full_name": "...", "phone": "...", "club": "...", "daily_rate": 500 }
-    Returns: { status: "success", id: <worker_id> }
+    Adds a new worker with retroactive registration support.
+    Expects JSON:
+      { "full_name": "...", "phone": "...", "club": "...", "daily_rate": 500, "registered_at": "YYYY-MM-DD" }
     """
     try:
         data = await request.json()
@@ -776,28 +800,62 @@ async def add_worker(request: web.Request):
         phone = data.get("phone")
         club = data.get("club")
         rate = float(data.get("daily_rate", 0))
+        
+        # 1. Capture the new date field, default to today if null/missing
+        registered_at = data.get("registered_at") or datetime.date.today().isoformat()
 
         if not name or not club:
             raise web.HTTPBadRequest(text="full_name and club are required")
 
-        # Use helper if exists
+        # 2. Update the helper call to include 'registered_at'
         if hasattr(db, "add_worker"):
-            worker_id = await db.add_worker(name=name, phone=phone, club=club, rate=rate)
+            # This fixes the "missing 1 required positional argument" error
+            worker_id = await db.add_worker(
+                name=name, 
+                phone=phone, 
+                club=club, 
+                rate=rate, 
+                registered_at=registered_at
+            )
         else:
+            # Fallback manual insert also updated for the 2030 Ultra schema
             async with db._pool.acquire() as conn:
                 worker_id = await conn.fetchval(
-                    "INSERT INTO workers (full_name, phone, club, daily_rate, is_active) VALUES ($1,$2,$3,$4,TRUE) RETURNING id",
-                    name, phone, club, rate
+                    """
+                    INSERT INTO workers (full_name, phone, club, daily_rate, registered_at, is_active) 
+                    VALUES ($1, $2, $3, $4, $5::DATE, TRUE) 
+                    RETURNING id
+                    """,
+                    name, phone, club, rate, registered_at
                 )
 
         return web.json_response({"status": "success", "id": int(worker_id)})
+        
     except web.HTTPError:
         raise
     except Exception as e:
         logging.exception("Failed to add worker: %s", e)
-        raise web.HTTPInternalServerError(text="Failed to add worker")
+        # Return a clearer error to the frontend
+        return web.json_response({"error": str(e)}, status=500)
 
 
+# In api.py, add this route
+async def delete_worker(request: web.Request):
+    try:
+        # Get ID from URL path
+        worker_id = int(request.match_info['id'])
+        
+        success = await db.delete_worker(worker_id)
+        
+        if success:
+            return web.json_response({"status": "success"})
+        return web.json_response({"error": "Worker not found"}, status=404)
+    except Exception as e:
+        logging.error(f"API Delete Error: {e}")
+        return web.json_response({"error": str(e)}, status=500)
+    
+
+    
 async def toggle_worker(request: web.Request):
     """
     Toggle worker active status. POST /api/workers/{id}/toggle
@@ -1232,5 +1290,7 @@ def setup_admin_routes(app: web.Application):
     app.router.add_get("/api/transactions", get_transactions)
     app.router.add_get("/api/workers/{id}/detail", get_worker_detail)
     app.router.add_get("/api/workers/{id}/settlement-summary", get_settlement_summary)
+    app.router.add_post("/api/workers/{id}/delete", delete_worker)
+
 
     app.router.add_get("/api/ledger", get_transactions)  # backward compatibility

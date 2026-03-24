@@ -241,26 +241,35 @@ function showToast(msg, type = "success") {
         setTimeout(() => toast.remove(), 400);
     }, 2500);
 }
-
 function timeAgo(dateString) {
-    if (!dateString) return "New Worker";
+    if (!dateString) return "Recently";
     
     const now = new Date();
     const past = new Date(dateString);
     const seconds = Math.floor((now - past) / 1000);
 
+    // 1. Handle "Today" logic first for better UX
+    if (seconds < 86400 && now.getDate() === past.getDate()) {
+        return "Today";
+    }
+
+    // 2. Years (seconds in a year: 31,536,000)
     let interval = Math.floor(seconds / 31536000);
     if (interval >= 1) return interval + (interval === 1 ? " year ago" : " years ago");
     
+    // 3. Months (seconds in 30 days: 2,592,000)
     interval = Math.floor(seconds / 2592000);
     if (interval >= 1) return interval + (interval === 1 ? " month ago" : " months ago");
     
+    // 4. Days (seconds in a day: 86,400)
     interval = Math.floor(seconds / 86400);
     if (interval >= 1) return interval + (interval === 1 ? " day ago" : " days ago");
     
+    // 5. Hours
     interval = Math.floor(seconds / 3600);
     if (interval >= 1) return interval + (interval === 1 ? " hour ago" : " hours ago");
     
+    // 6. Minutes
     interval = Math.floor(seconds / 60);
     if (interval >= 1) return interval + (interval === 1 ? " minute ago" : " minutes ago");
     
@@ -284,15 +293,14 @@ function renderWorkerCards(workers) {
     }
 
     container.innerHTML = workers.map((worker, index) => {
-        const initials = worker.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        // Safe initials logic
+        const initials = worker.full_name.trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2);
         const isActive = worker.is_active;
         
-        // 1. Debt Badge (Now beside the rate)
         const debtBadge = worker.active_loan > 0 
             ? `<span class="px-2 py-0.5 rounded-md bg-premium-neonPurple/10 text-[8px] font-black uppercase text-premium-neonPurple border border-premium-neonPurple/20 animate-pulse whitespace-nowrap">Loan: ${worker.active_loan.toLocaleString()} ETB</span>` 
             : '';
 
-        // 2. Unpaid Badge (Top Right)
         const unpaidBadge = worker.unpaid_value > 0
             ? `<div class="flex flex-col items-end shrink-0">
                 <span class="text-[10px] font-black text-premium-neonGreen tracking-tight whitespace-nowrap">${worker.unpaid_value.toLocaleString()} ETB</span>
@@ -300,10 +308,9 @@ function renderWorkerCards(workers) {
                </div>`
             : '';
             
-        const relativeTime = timeAgo(worker.last_payout_at);
-const lastPaid = worker.last_payout_at 
-    ? `<span class="text-[8px] text-gray-600 font-bold uppercase tracking-tighter italic">Last Paid: ${relativeTime}</span>` 
-    : '<span class="text-[8px] text-gray-700 font-bold uppercase tracking-tighter">New Worker</span>';
+        const regDate = worker.registered_at; 
+        const relativeTime = timeAgo(regDate);
+
         return `
             <div class="glass rounded-[2.2rem] p-5 mb-4 border-l-4 ${isActive ? 'border-premium-neonGreen' : 'border-red-500/50'} animate-fade-in relative overflow-hidden" 
                  style="animation-delay: ${index * 0.03}s; opacity: ${isActive ? '1' : '0.6'}">
@@ -311,14 +318,16 @@ const lastPaid = worker.last_payout_at
                 <div class="flex items-start justify-between mb-6 active:opacity-60 transition-all cursor-pointer" 
                      onclick="openWorkerDetail(${worker.id})">
                     
-                    <div class="flex items-center gap-4 min-w-0"> <div class="relative shrink-0">
+                    <div class="flex items-center gap-4 min-w-0"> 
+                        <div class="relative shrink-0">
                             <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-transparent flex items-center justify-center text-lg font-black border border-white/5 text-white/80">
                                 ${initials}
                             </div>
                             <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#050505] status-dot ${isActive ? 'bg-premium-neonGreen' : 'bg-red-500'}"></div>
                         </div>
                         
-                        <div class="min-w-0"> <h4 class="text-md font-bold tracking-tight text-white leading-tight break-words">
+                        <div class="min-w-0"> 
+                            <h4 class="text-md font-bold tracking-tight text-white leading-tight break-words">
                                 ${worker.full_name}
                             </h4>
                             <div class="flex flex-wrap items-center gap-2 mt-1">
@@ -360,16 +369,22 @@ const lastPaid = worker.last_payout_at
                     </label>
                 </div>
                 
-                <div class="mt-4 px-1">
-                    ${lastPaid}
+                <div class="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-premium-neonBlue/40"></div>
+                        <p class="text-[8px] font-black text-gray-500 uppercase tracking-widest">
+                            Started ${relativeTime}
+                        </p>
+                    </div>
                 </div>
-            </div>
-        `;
+            </div> `;
     }).join('');
 
     attachWorkerListeners();
     if (window.lucide) lucide.createIcons();
 }
+
+
 let currentDetailWorkerId = null; // To track who we are looking at
 let currentActiveWorker = null;
 async function openWorkerDetail(workerId) {
@@ -467,6 +482,66 @@ function openEditWorker() {
     }
 }
 
+
+async function confirmDeleteWorker() {
+    const worker = currentWorkerDetailData; // Assumes this is set when modal opens
+    if (!worker) return;
+
+    // 1. Native Telegram Confirmation (Safe & Fast)
+    if (window.Telegram?.WebApp?.showConfirm) {
+        window.Telegram.WebApp.showConfirm(
+            `Are you sure you want to delete ${worker.full_name}? This will remove all history and records.`,
+            async (confirmed) => {
+                if (confirmed) await executeDelete(worker.id);
+            }
+        );
+    } else {
+        // Browser Fallback
+        if (confirm(`Delete ${worker.full_name}?`)) await executeDelete(worker.id);
+    }
+}
+
+function resetDeleteButton() {
+    const btn = document.getElementById('delete-worker-btn');
+    if (btn) {
+        btn.disabled = false;
+        // Reset to the original Lucide trash icon
+        btn.innerHTML = `<i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Delete`;
+        // Re-initialize icons so Lucide renders the trash can
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
+async function executeDelete(workerId) {
+    const btn = document.getElementById('delete-worker-btn');
+    // Save original state
+    const originalContent = btn.innerHTML;
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="animate-spin text-[10px]">⌛</span>`;
+
+        const response = await fetch(`${API_BASE}/workers/${workerId}/delete`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) throw new Error("Delete Failed");
+
+        showToast("Worker Deleted", "success");
+        
+        closeDetailModal();
+        await refreshData();
+        
+        // CRITICAL: Reset the button for the NEXT time the modal opens
+        resetDeleteButton();
+
+    } catch (err) {
+        console.error(err);
+        showToast("Delete Failed", "error");
+        // Reset if it fails so the user can try again
+        resetDeleteButton();
+    }
+}
+
 function closeDetailModal() {
     const modal = document.getElementById('detail-modal');
     const content = modal.querySelector('.glass');
@@ -488,31 +563,51 @@ function closeDetailModal() {
 let activeEditingId = null;
 
 function triggerEditFlow(worker) {
-    activeEditingId = worker.id;
+    activeEditingId = worker.id; // Mark that we are EDITING, not adding
 
-    // 1. Set Title & Subtitle
-    document.getElementById('modal-title').innerText = "Edit Profile";
-    document.getElementById('modal-worker-subtitle').innerText = `Updating ${worker.full_name}`;
+    // 1. Update Modal Labels
+    const setTitle = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+    };
+    setTitle('modal-title', "Edit Profile");
+    setTitle('modal-worker-subtitle', `Updating ${worker.full_name}`);
+    setTitle('edit-submit-btn', "Save Changes");
 
-    // 2. Pre-fill the input fields
-    document.getElementById('edit-name').value = worker.full_name;
-    document.getElementById('edit-club').value = worker.club || '';
-    document.getElementById('edit-club').value = worker.club;
-    document.getElementById('edit-rate').value = worker.daily_rate;
+    // 2. Fill Inputs Safely (Check both old and new ID patterns)
+    const nameEl = document.getElementById('new-worker-name') || document.getElementById('edit-name');
+    const rateEl = document.getElementById('new-worker-rate') || document.getElementById('edit-rate');
+    const clubEl = document.getElementById('edit-club');
+    const phoneEl = document.getElementById('edit-phone');
 
-    // 3. Toggle Visibility (Hide Grid, Show Form)
-    document.getElementById('modal-action-grid').classList.add('hidden');
-    document.getElementById('modal-edit-form').classList.remove('hidden');
+    if (nameEl) nameEl.value = worker.full_name || '';
+    if (rateEl) rateEl.value = worker.daily_rate || '';
+    if (clubEl) clubEl.value = worker.club || '';
+    if (phoneEl) phoneEl.value = worker.phone || '';
 
-    // 4. Show the Modal
-    const modal = document.getElementById('worker-modal');
-    modal.classList.remove('hidden');
-    
+    // 3. HIDE the Registration Date during Edit
+    // We don't want to ruin calculations by changing the start date
+    const dateContainer = document.querySelector('#new-worker-reg-date')?.parentElement;
+    if (dateContainer) {
+        dateContainer.classList.add('hidden'); 
+    }
+
+    // 4. UI Transitions
+    const actionGrid = document.getElementById('modal-action-grid');
+    const editForm = document.getElementById('modal-edit-form');
+    const workerModal = document.getElementById('worker-modal');
+
+    if (actionGrid) actionGrid.classList.add('hidden');
+    if (editForm) editForm.classList.remove('hidden');
+    if (workerModal) workerModal.classList.remove('hidden');
+
+    // 5. Update Preview Card
+    updateWorkerPreview();
+
     if (window.Telegram?.WebApp?.HapticFeedback) {
         Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
 }
-
 
 // 1. Enter Loan Mode
 function triggerLoanMode(worker) {
@@ -593,12 +688,20 @@ function processAction(type) {
     }
 }
 async function submitEdit() {
-    const name = document.getElementById('edit-name').value.trim();
+    // 1. Grab values from the new Ultra-Engine IDs
+    const name = document.getElementById('new-worker-name')?.value.trim() || 
+                 document.getElementById('edit-name')?.value.trim();
+    
     const club = document.getElementById('edit-club').value;
-    // Fix: Removed duplicate 'const rate' declaration
-    const rateInput = document.getElementById('edit-rate');
+    
+    const rateInput = document.getElementById('new-worker-rate') || 
+                      document.getElementById('edit-rate');
     const rate = rateInput ? rateInput.value : "";
+    
     const phone = document.getElementById('edit-phone')?.value || "";
+    
+    // NEW: Capture the registration date for retroactive backfilling
+    const regDate = document.getElementById('new-worker-reg-date')?.value;
 
     if (!name || !club || !rate) {
         return showToast("Please fill all fields", "error");
@@ -609,12 +712,14 @@ async function submitEdit() {
 
     try {
         btn.disabled = true;
-        btn.innerHTML = `<span class="animate-pulse">SAVING...</span>`;
+        // 2030 Visual: Cinematic saving state
+        btn.innerHTML = `<span class="flex items-center justify-center gap-2">
+            <div class="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            SYNCING...
+        </span>`;
 
-        // WARNING: If this endpoint is only for "rate", your club won't update!
-        // Try changing this to a general update endpoint if your backend supports it
         const url = activeEditingId 
-            ? `${API_BASE}/workers/${activeEditingId}/update` // Changed from /rate to /update
+            ? `${API_BASE}/workers/${activeEditingId}/update` 
             : `${API_BASE}/workers`;
 
         const response = await fetch(url, {
@@ -624,20 +729,29 @@ async function submitEdit() {
                 full_name: name,
                 club: club,
                 daily_rate: parseFloat(rate),
-                phone: phone
+                phone: phone,
+                registered_at: regDate // Sent to backend for generate_series backfill
             })
         });
 
         if (!response.ok) throw new Error("API Error");
 
-        showToast(activeEditingId ? "Worker Updated" : "Worker Added!", "success");
+        // 2. Haptic Feedback for the "Pro" feel
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        }
+
+        showToast(activeEditingId ? "Profile Updated" : "Worker Registered", "success");
         
         closeModal(); 
-        refreshData(); 
+        await refreshData(); 
 
     } catch (err) {
         console.error(err);
         showToast("Failed to save worker", "error");
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+        }
     } finally {
         btn.disabled = false;
         btn.innerText = originalText;
@@ -653,46 +767,115 @@ function closeModal() {
 }
 
 function triggerAddFlow() {
-    activeEditingId = null; // Reset for "New Worker" mode
-    // Add this inside triggerAddFlow for extra polish
-const inputs = ['edit-name', 'edit-club', 'edit-rate'];
-inputs.forEach(id => {
-    const el = document.getElementById(id);
-    if(el) {
-        el.classList.add('border-premium-neonBlue/30');
-        setTimeout(() => el.classList.remove('border-premium-neonBlue/30'), 1500);
-    }
-});
-    // 1. Update UI Labels for the Bottom Sheet
-    document.getElementById('modal-title').innerText = "New Worker";
-    document.getElementById('modal-worker-subtitle').innerText = "Register a new worker";
-    document.getElementById('edit-submit-btn').innerText = "Create Worker";
+    activeEditingId = null; 
 
-    // 2. Clear & Default Inputs
-    document.getElementById('edit-name').value = '';
+    // 1. Safe UI Label Updates (Prevents the 'null' crash)
+    const setTitle = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+    };
+
+    setTitle('modal-title', "New Worker");
+    setTitle('modal-worker-subtitle', "Register a new worker");
+    setTitle('edit-submit-btn', "Create Worker");
+
+    // 2. Clear All Potential Input IDs (Handling both old and new)
+    const inputIds = [
+        'new-worker-name', 'edit-name', 
+        'new-worker-rate', 'edit-rate', 
+        'edit-phone', 'new-worker-reg-date'
+    ];
     
-    // Default the Branch dropdown to the first option
+    inputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.value = '';
+            // Extra polish: quick border glow
+            el.classList.add('border-premium-neonBlue/30');
+            setTimeout(() => el.classList.remove('border-premium-neonBlue/30'), 1500);
+        }
+    });
+
+    // 3. Set Defaults
     const clubSelect = document.getElementById('edit-club');
-    if (clubSelect) {
-        clubSelect.selectedIndex = 0; // Defaults to Q/Giwerigos
+    if (clubSelect) clubSelect.selectedIndex = 0;
+
+    const dateInput = document.getElementById('new-worker-reg-date');
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().split('T')[0];
     }
+    // Inside your existing triggerAddFlow function, add this line:
+const dateContainer = document.querySelector('#new-worker-reg-date')?.parentElement;
+if (dateContainer) {
+    dateContainer.classList.remove('hidden'); // Show it only for NEW workers
+}
 
-    document.getElementById('edit-rate').value = '';
-    
-    if(document.getElementById('edit-phone')) {
-        document.getElementById('edit-phone').value = '';
-    }
+    // 4. UI State Switching
+    const actionGrid = document.getElementById('modal-action-grid');
+    const editForm = document.getElementById('modal-edit-form');
+    const workerModal = document.getElementById('worker-modal');
 
-    // 3. Switch View (Hide Action Buttons, Show Registration Form)
-    document.getElementById('modal-action-grid').classList.add('hidden');
-    document.getElementById('modal-edit-form').classList.remove('hidden');
+    if (actionGrid) actionGrid.classList.add('hidden');
+    if (editForm) editForm.classList.remove('hidden');
+    if (workerModal) workerModal.classList.remove('hidden');
 
-    // 4. Slide Up Modal
-    document.getElementById('worker-modal').classList.remove('hidden');
+    // 5. Update the Live Preview and Trigger Haptics
+    updateWorkerPreview();
 
-    // 5. Native Telegram Feel
     if (window.Telegram?.WebApp?.HapticFeedback) {
         Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
+    }
+}
+function updateWorkerPreview() {
+    const nameInput = document.getElementById('new-worker-name');
+    const rateInput = document.getElementById('new-worker-rate');
+    const dateInput = document.getElementById('new-worker-reg-date');
+    const clubInput = document.getElementById('edit-club');
+
+    const name = nameInput.value || "Full Name";
+    const rate = parseFloat(rateInput.value) || 0;
+    const regDateVal = dateInput.value;
+    const club = clubInput.value;
+    const calcContainer = document.getElementById('calc-breakdown');
+    const calcText = document.getElementById('calc-text');
+
+    // 1. Text Updates
+    document.getElementById('prev-name').innerText = name;
+    document.getElementById('prev-club').innerText = club;
+    document.getElementById('prev-rate').innerText = `${rate} Br.`;
+
+    // 2. Retroactive Math
+    if (regDateVal && rate > 0) {
+        const regDate = new Date(regDateVal);
+        const today = new Date();
+        
+        regDate.setHours(0,0,0,0);
+        today.setHours(0,0,0,0);
+
+        const diffTime = today - regDate;
+        // The "+ 1" ensures today is included in the pay
+        const diffDays = Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
+        const totalUnpaid = diffDays * rate;
+
+        // Update main balance
+        document.getElementById('prev-unpaid').innerHTML = `${totalUnpaid.toLocaleString()} <span class="text-[10px] text-premium-neonBlue">Br.</span>`;
+
+        // UPDATE THE TOOLTIP
+        if (calcContainer && calcText) {
+            calcContainer.classList.remove('hidden');
+            // Logic explanation for your uncle:
+            calcText.innerText = `${diffDays} days × ${rate} Br/day`;
+            
+            // If it's a long period, make the badge "pop"
+            if (diffDays > 7) {
+                calcContainer.classList.add('opacity-100', 'translate-x-0');
+                calcText.classList.add('text-premium-neonPurple'); // Turn purple for "Big Debt"
+            } else {
+                calcText.classList.remove('text-premium-neonPurple');
+            }
+        }
+    } else {
+        if (calcContainer) calcContainer.classList.add('hidden');
     }
 }
 

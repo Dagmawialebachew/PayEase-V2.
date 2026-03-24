@@ -279,24 +279,73 @@
             </button>
         </div>
 
-        <div id="modal-edit-form" class="hidden space-y-6">
-            <div class="space-y-4">
-                <input type="text" id="edit-name" placeholder="Full Name" class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-gray-600 focus:border-premium-neonBlue outline-none transition-all">
-                <div class="relative">
-                    <select id="edit-club" class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white appearance-none focus:border-premium-neonBlue outline-none transition-all cursor-pointer">
-                        <option value="Q/giwerigos" class="bg-[#0b0b0b]">Q/Giwerigos</option>
+       <div id="modal-edit-form" class="hidden space-y-4">
+    
+    <div id="worker-preview-container" class="mb-4 scale-95 opacity-90 transition-all duration-500">
+        <p class="text-[8px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3 ml-2">Profile Card Preview</p>
+        <div id="worker-live-card" class="glass p-6 rounded-[2.5rem] relative overflow-hidden transition-all duration-700">
+            <div class="absolute -top-10 -right-10 w-24 h-24 bg-premium-neonBlue/10 blur-3xl"></div>
+            
+            <div class="flex justify-between items-start relative z-10">
+                <div>
+                    <h3 id="prev-name" class="text-xl font-black text-white italic tracking-tight">Full-Name</h3>
+                    <p id="prev-club" class="text-[10px] text-premium-neonBlue font-bold uppercase tracking-widest mt-1">General Branch</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[8px] text-gray-500 uppercase font-black tracking-tighter">Rate / Day</p>
+                    <p id="prev-rate" class="text-lg font-black text-white">0 <span class="text-[10px] text-gray-400">ETB</span></p>
+                </div>
+            </div>
+
+         <div class="mt-8 flex justify-between items-end relative z-10">
+    <div class="space-y-1">
+        <p class="text-[8px] text-gray-500 uppercase font-black">Total Unpaid Balance</p>
+        <p id="prev-unpaid" class="text-xs font-bold text-white">0.00 Br.</p>
+        
+        <div id="calc-breakdown" class="hidden flex items-center gap-1.5 mt-1 transition-all duration-500">
+            <div class="w-1 h-1 rounded-full bg-premium-neonBlue animate-pulse"></div>
+            <p id="calc-text" class="text-[9px] font-medium text-premium-neonBlue/80 italic"></p>
+        </div>
+    </div>
+    <span class="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black text-gray-400 uppercase tracking-tighter">Status: Pending</span>
+</div>
+
+        </div>
+    </div>
+
+    <div class="space-y-2">
+        <div class="relative">
+            <input type="text" id="new-worker-name" placeholder="Full Name" oninput="updateWorkerPreview()" 
+                   class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-premium-neonBlue/50 transition-all">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <input type="number" id="new-worker-rate" placeholder="Daily Rate" oninput="updateWorkerPreview()" 
+                   class="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-premium-neonBlue/50 transition-all">
+            
+            <select id="edit-club" onchange="updateWorkerPreview()" 
+                    class="bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-white outline-none focus:border-premium-neonBlue/50 transition-all appearance-none">
+                 <option value="Q/giwerigos" class="bg-[#0b0b0b]">Q/Giwerigos</option>
                         <option value="Diredewa" class="bg-[#0b0b0b]">Diredewa</option>
                         <option value="BahirDar" class="bg-[#0b0b0b]">BahirDar</option>
                         <option value="E/Buna" class="bg-[#0b0b0b]">E/Buna</option>
-                    </select>
-                    <div class="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                    </div>
-                </div>
-                <input type="number" id="edit-rate" placeholder="Daily Rate" class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-gray-600 focus:border-premium-neonBlue outline-none transition-all">
-            </div>
-            <button onclick="submitEdit()" id="edit-submit-btn" class="w-full bg-white py-5 rounded-[2rem] text-black font-black uppercase text-[10px] tracking-[0.2em] shadow-xl active:scale-95 transition-all">Update Profile</button>
+            </select>
         </div>
+
+        <div class="bg-white/5 border border-white/10 rounded-3xl p-5">
+            <p class="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-3 ml-1">Registration Date</p>
+            <input type="date" id="new-worker-reg-date" onchange="updateWorkerPreview()" 
+                   class="w-full bg-transparent text-white outline-none font-bold text-sm">
+        </div>
+    </div>
+
+    <div class="pt-4">
+        <button id="edit-submit-btn" onclick="submitEdit()" 
+                class="w-full bg-white text-black font-black py-5 rounded-2xl uppercase tracking-widest text-xs active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+            Create Worker
+        </button>
+    </div>
+</div>
 
         <div id="modal-loan-form" class="hidden space-y-6 animate-in fade-in slide-in-from-bottom-4">
             <div class="space-y-2">
@@ -313,10 +362,16 @@
     <div id="detail-modal" class="fixed inset-0 z-[700] hidden bg-black/60 backdrop-blur-sm transition-opacity duration-300">
     <div class="glass fixed bottom-0 left-0 right-0 max-h-[95vh] overflow-y-auto rounded-t-[2.5rem] p-6 shadow-2xl transition-transform duration-500 translate-y-full border-t border-white/10 pb-10">
         
-        <div class="flex items-center justify-between mb-8">
-    <button onclick="openEditWorker()" class="text-[10px] font-black uppercase tracking-widest text-premium-neonBlue flex items-center gap-2 bg-white/5 px-4 py-2.5 rounded-xl border border-white/5 active:scale-90 transition-all">
-        <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit
-    </button>
+       <div class="flex items-center justify-between mb-8">
+    <div class="flex gap-2">
+        <button onclick="openEditWorker()" class="text-[10px] font-black uppercase tracking-widest text-premium-neonBlue flex items-center gap-2 bg-white/5 px-4 py-2.5 rounded-xl border border-white/5 active:scale-90 transition-all">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit
+        </button>
+
+        <button id="delete-worker-btn" onclick="confirmDeleteWorker()" class="text-[10px] font-black uppercase tracking-widest text-red-500 flex items-center gap-2 bg-red-500/10 px-4 py-2.5 rounded-xl border border-red-500/20 active:scale-90 transition-all hover:bg-red-500/20">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Delete
+        </button>
+    </div>
 
     <div class="h-1.5 w-12 rounded-full bg-white/10"></div>
 
@@ -371,14 +426,7 @@
             </div>
     </div>
 </div>
-<div id="modal-edit-form" class="hidden space-y-4">
-    <input type="text" id="edit-name" placeholder="Full Name" ...>
-    <input type="text" id="edit-phone" placeholder="Phone Number" class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none">
-    <input type="text" id="edit-club" placeholder="Club (e.g. Vintage)" ...>
-    <input type="number" id="edit-rate" placeholder="Daily Rate (ETB)" ...>
-    
-    <button onclick="submitEdit()" id="edit-submit-btn" ...>Create Worker</button>
-</div>
+
     <script src="/frontend/src/app.js"></script>
 </body>
 </html>

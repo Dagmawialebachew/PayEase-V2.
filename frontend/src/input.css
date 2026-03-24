@@ -16,6 +16,16 @@
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+@keyframes neon-pulse {
+    0% { border-color: rgba(0, 210, 255, 0.2); }
+    50% { border-color: rgba(0, 210, 255, 0.5); }
+    100% { border-color: rgba(0, 210, 255, 0.2); }
+}
+
+.glow-active {
+    animation: neon-pulse 2s infinite ease-in-out;
+}
+
 
 /* Premium OLED Depth & Glows */
 .worker-card {
